@@ -46,13 +46,13 @@ export default function CapsuleDetail({ capsule, now, readOnly = false, onClose,
           )}
 
           <p className="capsule-card-date">Unlocked {formatDateTime(capsule.unlockAt)}</p>
-
-          {!readOnly && capsule.visibility === "public" && (
-            <button type="button" onClick={handleShare}>
-              {copied ? "Link copied!" : "🔗 Copy share link"}
-            </button>
-          )}
         </div>
+      )}
+
+      {!readOnly && capsule.visibility === "public" && (
+        <button type="button" onClick={handleShare}>
+          {copied ? "Link copied!" : "🔗 Copy share link"}
+        </button>
       )}
 
       {showClose && (

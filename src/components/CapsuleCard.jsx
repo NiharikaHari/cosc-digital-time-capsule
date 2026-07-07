@@ -1,8 +1,22 @@
+import { useState } from "react";
 import CountdownTimer from "./CountdownTimer";
 import { formatDateTime, isUnlocked } from "../utils/dateUtils";
+import { buildShareUrl } from "../utils/shareUtils";
 
-export default function CapsuleCard({ capsule, now, onView, onEdit, onDelete }) {
+export default function CapsuleCard({ capsule, now, onView, onDelete }) {
+  const [copied, setCopied] = useState(false);
   const unlocked = isUnlocked(capsule.unlockAt, now);
+
+  async function handleShare() {
+    const url = buildShareUrl(capsule);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link:", url);
+    }
+  }
 
   return (
     <div className={`capsule-card ${unlocked ? "capsule-card-unlocked" : "capsule-card-locked"}`}>
@@ -32,9 +46,9 @@ export default function CapsuleCard({ capsule, now, onView, onEdit, onDelete }) 
         <button type="button" onClick={() => onView(capsule)}>
           {unlocked ? "Open" : "View"}
         </button>
-        {!unlocked && (
-          <button type="button" onClick={() => onEdit(capsule)}>
-            Edit
+        {capsule.visibility === "public" && (
+          <button type="button" onClick={handleShare}>
+            {copied ? "Copied!" : "🔗 Share"}
           </button>
         )}
         <button type="button" onClick={() => onDelete(capsule)}>

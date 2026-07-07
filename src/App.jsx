@@ -6,16 +6,10 @@ import CapsuleGrid from "./components/CapsuleGrid";
 import CapsuleDetail from "./components/CapsuleDetail";
 import SharedCapsuleView from "./components/SharedCapsuleView";
 import useNow from "./hooks/useNow";
-import { loadState, saveState } from "./storage";
+import { fetchCapsules, createCapsule, deleteCapsule } from "./api";
 import { isUnlocked } from "./utils/dateUtils";
 import { getSharedCapsuleFromLocation } from "./utils/shareUtils";
 import "./App.css";
-
-let idCounter = Date.now();
-function nextId() {
-  idCounter += 1;
-  return `capsule-${idCounter}`;
-}
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -24,19 +18,34 @@ const FILTERS = [
 ];
 
 export default function App() {
-  const [state, setState] = useState(loadState);
-  const [saveError, setSaveError] = useState("");
+  const [capsules, setCapsules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [isCreating, setIsCreating] = useState(false);
-  const [editingCapsule, setEditingCapsule] = useState(null);
   const [viewingCapsule, setViewingCapsule] = useState(null);
   const [deletingCapsule, setDeletingCapsule] = useState(null);
   const [sharedCapsule, setSharedCapsule] = useState(getSharedCapsuleFromLocation);
   const now = useNow();
 
   useEffect(() => {
-    setSaveError(saveState(state) ?? "");
-  }, [state]);
+    let cancelled = false;
+    fetchCapsules()
+      .then((data) => {
+        if (cancelled) return;
+        setCapsules(data);
+        setError("");
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     function handleHashChange() {
@@ -47,34 +56,36 @@ export default function App() {
   }, []);
 
   const filteredCapsules = useMemo(() => {
-    const sorted = [...state.capsules].sort(
+    const sorted = [...capsules].sort(
       (a, b) => new Date(a.unlockAt).getTime() - new Date(b.unlockAt).getTime()
     );
     if (filter === "locked") return sorted.filter((c) => !isUnlocked(c.unlockAt, now));
     if (filter === "unlocked") return sorted.filter((c) => isUnlocked(c.unlockAt, now));
     return sorted;
-  }, [state.capsules, filter, now]);
+  }, [capsules, filter, now]);
 
-  function handleCreate(data) {
-    setState((prev) => ({ ...prev, capsules: [...prev.capsules, { id: nextId(), createdAt: new Date().toISOString(), ...data }] }));
-    setIsCreating(false);
+  async function handleCreate(data) {
+    try {
+      const created = await createCapsule(data);
+      setCapsules((prev) => [...prev, created]);
+      setError("");
+      setIsCreating(false);
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
-  function handleUpdate(data) {
-    const capsuleId = editingCapsule.id;
-    setState((prev) => ({
-      ...prev,
-      capsules: prev.capsules.map((capsule) =>
-        capsule.id === capsuleId ? { ...capsule, ...data } : capsule
-      ),
-    }));
-    setEditingCapsule(null);
-  }
-
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     const capsuleId = deletingCapsule.id;
-    setState((prev) => ({ ...prev, capsules: prev.capsules.filter((c) => c.id !== capsuleId) }));
-    setDeletingCapsule(null);
+    try {
+      await deleteCapsule(capsuleId);
+      setCapsules((prev) => prev.filter((c) => c.id !== capsuleId));
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingCapsule(null);
+    }
   }
 
   function handleDismissShared() {
@@ -86,7 +97,7 @@ export default function App() {
     return <SharedCapsuleView capsule={sharedCapsule} onDismiss={handleDismissShared} />;
   }
 
-  const lockedCount = state.capsules.filter((c) => !isUnlocked(c.unlockAt, now)).length;
+  const lockedCount = capsules.filter((c) => !isUnlocked(c.unlockAt, now)).length;
 
   return (
     <div className="app-page">
@@ -101,7 +112,7 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {saveError && <p className="form-error save-error">{saveError}</p>}
+        {error && <p className="form-error save-error">{error}</p>}
 
         <div className="filter-bar">
           {FILTERS.map((f) => (
@@ -117,35 +128,26 @@ export default function App() {
           ))}
         </div>
 
-        <CapsuleGrid
-          capsules={filteredCapsules}
-          now={now}
-          onView={setViewingCapsule}
-          onEdit={setEditingCapsule}
-          onDelete={setDeletingCapsule}
-          emptyMessage={
-            state.capsules.length === 0
-              ? "No capsules yet. Seal a memory for your future self."
-              : "No capsules in this filter."
-          }
-        />
+        {loading ? (
+          <p className="loading-message">Loading capsules…</p>
+        ) : (
+          <CapsuleGrid
+            capsules={filteredCapsules}
+            now={now}
+            onView={setViewingCapsule}
+            onDelete={setDeletingCapsule}
+            emptyMessage={
+              capsules.length === 0
+                ? "No capsules yet. Seal a memory for your future self."
+                : "No capsules in this filter."
+            }
+          />
+        )}
       </main>
 
       {isCreating && (
         <Modal onClose={() => setIsCreating(false)}>
           <CapsuleForm onSubmit={handleCreate} onCancel={() => setIsCreating(false)} />
-        </Modal>
-      )}
-
-      {editingCapsule && (
-        <Modal onClose={() => setEditingCapsule(null)}>
-          <CapsuleForm
-            initialValues={editingCapsule}
-            heading="Edit capsule"
-            submitLabel="Save"
-            onSubmit={handleUpdate}
-            onCancel={() => setEditingCapsule(null)}
-          />
         </Modal>
       )}
 

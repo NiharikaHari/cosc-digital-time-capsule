@@ -4,24 +4,15 @@ import {
   fromDateTimeLocalValue,
   getDefaultUnlockDateTimeLocal,
   getNowDateTimeLocal,
-  toDateTimeLocalValue,
 } from "../utils/dateUtils";
 
-export default function CapsuleForm({
-  initialValues,
-  heading = "New capsule",
-  submitLabel = "Seal capsule",
-  onSubmit,
-  onCancel,
-}) {
-  const [title, setTitle] = useState(initialValues?.title ?? "");
-  const [message, setMessage] = useState(initialValues?.message ?? "");
-  const [notes, setNotes] = useState(initialValues?.notes ?? "");
-  const [images, setImages] = useState(initialValues?.images ?? []);
-  const [unlockLocal, setUnlockLocal] = useState(
-    initialValues?.unlockAt ? toDateTimeLocalValue(initialValues.unlockAt) : getDefaultUnlockDateTimeLocal()
-  );
-  const [visibility, setVisibility] = useState(initialValues?.visibility ?? "private");
+export default function CapsuleForm({ onSubmit, onCancel }) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [notes, setNotes] = useState("");
+  const [images, setImages] = useState([]);
+  const [unlockLocal, setUnlockLocal] = useState(getDefaultUnlockDateTimeLocal());
+  const [visibility, setVisibility] = useState("private");
   const [error, setError] = useState("");
 
   function handleSubmit(e) {
@@ -55,7 +46,7 @@ export default function CapsuleForm({
 
   return (
     <form className="capsule-form" onSubmit={handleSubmit}>
-      <h2 className="modal-title">{heading}</h2>
+      <h2 className="modal-title">New capsule</h2>
 
       <label className="form-field">
         Title
@@ -123,14 +114,14 @@ export default function CapsuleForm({
             checked={visibility === "public"}
             onChange={() => setVisibility("public")}
           />
-          🌐 Public — can be shared via a link once unlocked
+          🌐 Public — can be shared via a link right away
         </label>
       </fieldset>
 
       {error && <p className="form-error">{error}</p>}
 
       <div className="modal-actions">
-        <button type="submit">{submitLabel}</button>
+        <button type="submit">Seal capsule</button>
         <button type="button" onClick={onCancel}>
           Cancel
         </button>

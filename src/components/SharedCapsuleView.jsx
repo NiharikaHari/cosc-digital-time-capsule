@@ -1,26 +1,53 @@
 import useNow from "../hooks/useNow";
-import CapsuleDetail from "./CapsuleDetail";
+import CapsuleDial from "./CapsuleDial";
+import { formatDateTime, isUnlocked } from "../utils/dateUtils";
 
 export default function SharedCapsuleView({ capsule, onDismiss }) {
   const now = useNow();
+  const unlocked = isUnlocked(capsule.unlockAt, now);
 
   return (
-    <div className="app-page">
-      <header className="topbar">
-        <span className="app-icon" aria-hidden="true">
-          ⏳
+    <div className={`capsule-reveal-page ${unlocked ? "capsule-reveal-opened" : "capsule-reveal-sealed"}`}>
+      <header className="capsule-reveal-topbar">
+        <span className="capsule-reveal-brand">
+          <span aria-hidden="true">⏳</span> Digital Time Capsule
         </span>
-        <h1 className="app-title">Digital Time Capsule</h1>
+        <button type="button" className="capsule-reveal-exit" onClick={onDismiss}>
+          My capsules
+        </button>
       </header>
 
-      <main className="app-main shared-capsule-main">
-        <p className="shared-capsule-banner">You're viewing a capsule someone shared with you.</p>
-        <div className="capsule-detail-card">
-          <CapsuleDetail capsule={capsule} now={now} readOnly showClose={false} />
-        </div>
-        <button type="button" className="shared-capsule-exit" onClick={onDismiss}>
-          Go to my capsules
-        </button>
+      <main className="capsule-reveal-main">
+        {unlocked ? (
+          <>
+            <span className="capsule-reveal-pill">📬 Unsealed</span>
+            <h1 className="capsule-reveal-title">{capsule.title}</h1>
+            <p className="capsule-reveal-message">{capsule.message}</p>
+
+            {capsule.notes && <p className="capsule-reveal-notes">{capsule.notes}</p>}
+
+            {capsule.images?.length > 0 && (
+              <div className="capsule-reveal-images">
+                {capsule.images.map((image) => (
+                  <img key={image.id} src={image.dataUrl} alt={image.name} />
+                ))}
+              </div>
+            )}
+
+            <p className="capsule-reveal-date">Unlocked {formatDateTime(capsule.unlockAt)}</p>
+          </>
+        ) : (
+          <>
+            <span className="capsule-reveal-pill">Opens in</span>
+            <h1 className="capsule-reveal-title">{capsule.title}</h1>
+
+            <CapsuleDial unlockAt={capsule.unlockAt} createdAt={capsule.createdAt} now={now} />
+
+            <p className="capsule-reveal-tagline">
+              Hang tight. This capsule stays sealed until {formatDateTime(capsule.unlockAt)}.
+            </p>
+          </>
+        )}
       </main>
     </div>
   );

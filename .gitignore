@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# lowdb runtime data
+server/data/db.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
